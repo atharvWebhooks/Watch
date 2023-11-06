@@ -1,0 +1,15 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: print-pr-id
+spec:
+  inputs:
+    params:
+      - name: pr-id
+        description: "Pull Request ID"
+        type: string
+  steps:
+    - name: print-pr-id-step
+      image: alpine
+      command: ["sh", "-c"]
+      args: ["echo PR ID is $(params.pr-id)"]
