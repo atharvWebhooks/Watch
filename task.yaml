@@ -5,7 +5,7 @@ metadata:
 spec:
   inputs:
     params:
-      - name: pr-id
+      - name: pr-id-along-with-some-data
         description: "Pull Request ID"
         type: string
   steps:
