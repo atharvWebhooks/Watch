@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: print-pr-id
+  name: print-pr-id-and-new-id
 spec:
   inputs:
     params:
