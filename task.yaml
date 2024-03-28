@@ -9,7 +9,7 @@ spec:
         description: "Pull Request ID"
         type: string
   steps:
-    - name: print-pr-id-step
+    - name: print-pr-id-step-new-step
       image: alpine
       command: ["sh", "-c"]
       args: ["echo PR ID is $(params.pr-id)"]
