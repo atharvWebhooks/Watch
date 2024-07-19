@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ozone-git-pull
+  namespace: ozone
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/categories: Git
+    tekton.dev/tags: Git
+    tekton.dev/displayName: "Git Pull"
+    ozone-in2tive-ai/imgurl: "/api/asset-bucket/taskicons/git.svg"
+spec:
+  description: >-
+    A task for pullling code from git
+  params:
+    - description: |
+        Repository directory
+      name: PROJECT_DIR
+      type: string
+    - description: |
+        Repository user
+      name: REPO_USER
+      type: string
+    - description: |
+        Repository password
+      name: REPO_PASSWORD
+      type: string
+    - description: |
+        Repository url
+      name: REPO_URL
+      type: string
+    - description: |
+        Repo branch
+      name: REPO_BRANCH
+      type: string
+  steps:
+    - image: "{{TEKTON_PUBLIC_REGISTRY_PREFIX}}/alpine/git:latest"
+      name: git-clone
+      script: |
+        set +x
+        rm -rf $(workspaces.gitpull.path)/$(params.PROJECT_DIR)
+        git clone -b $(params.REPO_BRANCH) --recursive https://$(params.REPO_USER):"$(params.REPO_PASSWORD)"@"$(params.REPO_URL)" $(workspaces.gitpull.path)/$(params.PROJECT_DIR)
+      securityContext:
+        privileged: true
+  workspaces:
+    - description: Where git pulls
+      mountPath: "/gitpull"
+      name: gitpull
