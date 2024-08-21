@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: tag-ozone-api-server-images
+  name: my-third-yaml-change
   namespace: ozone
 spec:
   params:
