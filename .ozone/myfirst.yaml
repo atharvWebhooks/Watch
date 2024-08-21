@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: api-server-build-and-push
+  name: my-first-build-and-push
   namespace: ozone
 spec:
   results:
