@@ -1,0 +1,134 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ozone-aws-code-pipeline-create
+  namespace: ozone
+spec:
+  params:
+  - description: |
+      pipeline name
+    name: PIPELINE_NAME
+    type: string
+  - description: |
+      pipeline name
+    name: ROLE_ARN
+    type: string
+  - description: |
+      aws access key id
+    name: AWS_ACCESS_KEY_ID
+    type: string
+  - description: |
+      aws secret access key
+    name: AWS_SECRET_ACCESS_KEY
+    type: string
+  - description: |
+      aws region name
+    name: YOUR_AWS_REGION
+    type: string
+  - description: |
+      git username
+    name: YOUR_GITHUB_REPO_OWNER
+    type: string
+  - description: |
+      Repo name
+    name: YOUR_GITHUB_REPO_NAME
+    type: string
+  - description: |
+      git branch name
+    name: YOUR_GITHUB_BRANCH
+    type: string
+  - description: |
+      git personal access token
+    name: YOUR_GITHUB_PERSONAL_ACCESS_TOKEN
+    type: string
+  - description: |
+      s3 bucket name
+    name: YOUR_S3_BUCKET_NAME
+    type: string
+  - description: |
+      codebuild project name
+    name: YOUR_CODEBUILD_PROJECT_NAME
+    type: string
+  tasks:
+  - name: aws-code-pipeline-create
+    params:
+    - name: PIPELINE_NAME
+      value: $(params.PIPELINE_NAME)
+    - name: ROLE_ARN
+      value: $(params.ROLE_ARN)
+    - name: AWS_ACCESS_KEY_ID
+      value: $(params.AWS_ACCESS_KEY_ID)
+    - name: AWS_SECRET_ACCESS_KEY
+      value: $(params.AWS_SECRET_ACCESS_KEY)
+    - name: YOUR_AWS_REGION
+      value: $(params.YOUR_AWS_REGION)
+    - name: YOUR_GITHUB_REPO_OWNER
+      value: $(params.YOUR_GITHUB_REPO_OWNER)
+    - name: YOUR_GITHUB_REPO_NAME
+      value: $(params.YOUR_GITHUB_REPO_NAME)
+    - name: YOUR_GITHUB_BRANCH
+      value: $(params.YOUR_GITHUB_BRANCH)
+    - name: YOUR_GITHUB_PERSONAL_ACCESS_TOKEN
+      value: $(params.YOUR_GITHUB_PERSONAL_ACCESS_TOKEN)
+    - name: YOUR_S3_BUCKET_NAME
+      value: $(params.YOUR_S3_BUCKET_NAME)
+    - name: YOUR_CODEBUILD_PROJECT_NAME
+      value: $(params.YOUR_CODEBUILD_PROJECT_NAME)
+    taskSpec:
+      params:
+      - description: ""
+        name: PIPELINE_NAME
+        type: string
+      - description: ""
+        name: ROLE_ARN
+        type: string
+      - description: ""
+        name: AWS_ACCESS_KEY_ID
+        type: string
+      - description: ""
+        name: AWS_SECRET_ACCESS_KEY
+        type: string
+      - description: ""
+        name: YOUR_AWS_REGION
+        type: string
+      - description: ""
+        name: YOUR_GITHUB_REPO_OWNER
+        type: string
+      - description: ""
+        name: YOUR_GITHUB_REPO_NAME
+        type: string
+      - description: ""
+        name: YOUR_GITHUB_BRANCH
+        type: string
+      - description: ""
+        name: YOUR_GITHUB_PERSONAL_ACCESS_TOKEN
+        type: string
+      - description: ""
+        name: YOUR_S3_BUCKET_NAME
+        type: string
+      - description: ""
+        name: YOUR_CODEBUILD_PROJECT_NAME
+        type: string
+      steps:
+      - image: '{{TEKTON_PUBLIC_REGISTRY_PREFIX}}/amazon/aws-cli:2.13.25'
+        name: ozone-aws-code-pipeline-create
+        script: |2
+
+          set +x
+
+          # Install AWS CLI (if not already installed)
+
+          #pip install --upgrade awscli
+
+          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID && aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY && aws configure set region $YOUR_AWS_REGION
+
+          aws codepipeline create-pipeline --cli-input-json '{ "pipeline": { "name": "$PIPELINE_NAME", "roleArn": " "$ROLE_ARN", "artifactStore": { "type": "S3", "location": "'$YOUR_S3_BUCKET_NAME'" }, "stages": [ { "name": "Source", "actions": [ { "name": "SourceAction", "actionTypeId": { "category": "Source", "owner": "ThirdParty", "version": "1", "provider": "GitHub" }, "configuration": { "Owner": "'$YOUR_GITHUB_REPO_OWNER'", "Repo": "'$YOUR_GITHUB_REPO_NAME'", "Branch": "'$YOUR_GITHUB_BRANCH'", "OAuthToken": "'$JFROG_UYOUR_GITHUB_PERSONAL_ACCESS_TOKENRL'" }, "outputArtifacts": [ { "name": "SourceOutput" } ] } ] }, { "name": "Build", "actions": [ { "name": "BuildAction", "actionTypeId": { "category": "Build", "owner": "AWS", "version": "1", "provider": "CodeBuild" }, "configuration": { "ProjectName": "'$YOUR_CODEBUILD_PROJECT_NAME'" }, "inputArtifacts": [ { "name": "SourceOutput" } ], "outputArtifacts": [ { "name": "BuildOutput" } ] } ] } ] } }'
+      workspaces:
+      - description: Where git pulls
+        mountPath: /gitpull
+        name: gitpull
+    workspaces:
+    - name: gitpull
+      workspace: gitpull
+  workspaces:
+  - name: gitpull
