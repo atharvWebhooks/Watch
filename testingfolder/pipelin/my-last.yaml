@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: gitlab-ci-trigger
+  namespace: ozone
+spec:
+  params:
+  - description: |
+      trigger token for pipeline
+    name: TRIGGER_TOKEN
+    type: string
+  - description: |
+      Repository branch
+    name: REPO_BRANCH
+    type: string
+  - description: |
+      Repository password
+    name: REPO_PASSWORD
+    type: string
+  - description: |
+      Gitlab project ID
+    name: PROJECT_ID
+    type: string
+  tasks:
+  - name: execute-pipeline
+    params:
+    - name: TRIGGER_TOKEN
+      value: $(params.TRIGGER_TOKEN)
+    - name: REPO_BRANCH
+      value: $(params.REPO_BRANCH)
+    - name: PROJECT_ID
+      value: $(params.PROJECT_ID)
+    - name: REPO_PASSWORD
+      value: $(params.REPO_PASSWORD)
+    taskSpec:
+      params:
+      - description: |
+          Trigger Token
+        name: TRIGGER_TOKEN
+        type: string
+      - description: |
+          Repository Branch
+        name: REPO_BRANCH
+        type: string
+      - description: |
+          Gitlab project ID
+        name: PROJECT_ID
+        type: string
+      - description: |
+          Gitlab Repo Password
+        name: REPO_PASSWORD
+        type: string
+      steps:
+      - image: '{{TEKTON_PUBLIC_REGISTRY_PREFIX}}/alpine/curl-jq:v1.0.0'
+        name: trigger-pipeline
+        script: "#!/bin/bash\n\nset +x\n\n\n# Trigger the GitLab pipeline and get
+          the pipeline ID\n\nRESPONSE=$(curl -s -X POST -F \"token=$TRIGGER_TOKEN\"
+          -F \"ref=$REPO_BRANCH\" \"https://gitlab.com/api/v4/projects/$PROJECT_ID/trigger/pipeline\")\n\n#
+          Check the HTTP status code for success (status code 201 for created)\n\nRESPONSE_STATUS=$(echo
+          \"$RESPONSE\" | jq -r '.status')\n\n\nif [[ \"$RESPONSE_STATUS\" != \"created\"
+          ]]; then\n  echo \"Error: Invalid Response: $RESPONSE\"\n  exit 1\nfi\n\n\nPIPELINE_ID=$(echo
+          \"$RESPONSE\" | jq -r '.id')\n\nWEB_URL=$(echo \"$RESPONSE\" | jq -r '.web_url')\n\n\nif
+          [[ -z  \"$PIPELINE_ID\" ]]; then\n  echo \"Error: Failed to extract the
+          pipeline ID from the API response.\"\n  exit 1\nfi\n\n\necho \"Pipeline
+          $PIPELINE_ID is triggered\"\n\necho \"\"\n\necho \"Pipeline web url: $WEB_URL\"\n\n\n\n#
+          Function to fetch job logs for a specific job using job  id\n\n\nfetch_job_logs()
+          {\n\n  # Fetch and print the logs for each job in the pipeline\n  \n  JOB_INFO=$(curl
+          -s --header \"PRIVATE-TOKEN:$REPO_PASSWORD\" \"https://gitlab.com/api/v4/projects/$PROJECT_ID/pipelines/$PIPELINE_ID/jobs\"
+          | jq -r '.[] | .id, .name')\n  JOB_IDS=()\n  JOB_NAMES=()\n  while IFS=
+          read -r job_id; do\n    read -r job_name\n    JOB_IDS+=(\"$job_id\")\n    JOB_NAMES+=(\"$job_name\")\n
+          \ done <<< \"$JOB_INFO\"\n\n  # Print the collected job IDs\n\n  echo \"All
+          JOB_IDS: ${JOB_IDS[@]}\"\n\n  # Iterate over the job IDs in reverse order\n\n
+          \ for ((i = ${#JOB_IDS[@]} - 1; i >= 0; i--)); do\n    JOB_ID=\"${JOB_IDS[i]}\"\n
+          \   JOB_NAME=\"${JOB_NAMES[i]}\"\n\n    # Check if logs for the job have
+          already been printed\n    JOB_LOGS=$(curl -s --header \"PRIVATE-TOKEN:$REPO_PASSWORD\"
+          \"https://gitlab.com/api/v4/projects/$PROJECT_ID/jobs/$JOB_ID/trace\")\n
+          \   echo \"Logs of JOB ID: $JOB_ID, Name: $JOB_NAME\"\n    echo \"$JOB_LOGS\"\n
+          \   echo \"\"\n  done\n}\n\n\n# Loop to monitor the pipeline status\n\necho
+          \"Fetching Logs for the pipeline $PIPELINE_ID...\"\n\nwhile :\n\ndo\n  #
+          Get the pipeline status\n\n  PIPELINE_STATUS=\"$(curl -s --header \"PRIVATE-TOKEN:$REPO_PASSWORD\"
+          https://gitlab.com/api/v4/projects/$PROJECT_ID/pipelines/$PIPELINE_ID |
+          jq -r '.status')\"\n  # echo \"Pipeline $PIPELINE_ID is in $PIPELINE_STATUS
+          state\"\n\n  if [[ \"$PIPELINE_STATUS\" == \"created\" || \"$PIPELINE_STATUS\"
+          == \"running\" || \"$PIPELINE_STATUS\" == \"pending\" ]]\n  then\n    continue\n
+          \ else\n    if [[ \"$PIPELINE_STATUS\" == \"failed\" ]]\n    then\n      fetch_job_logs\n
+          \     echo \"Pipeline $(PIPELINE_ID) execution failed\"; exit 1;\n    else\n
+          \     fetch_job_logs\n      echo \"Pipeline $PIPELINE_ID execution successful\";
+          exit 0;\n    fi\n    break\n  fi\ndone\n"
